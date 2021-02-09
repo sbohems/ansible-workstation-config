@@ -1,0 +1,65 @@
+- hosts: internal
+  become: yes
+  tasks:
+    - name: Copy MS Teams repository file
+      copy:
+        src: files/ms-teams.repo
+        dest: /etc/yum.repos.d/ms-teams.repo
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Upgrade packages to latest version
+      dnf:
+        name: "*"
+        state: latest
+        update_cache: yes
+
+    - name: Install base packages
+      package:
+        name: [ 'vim-enhanced', 'keepassxc', 'vagrant', 'teams', 'thunderbird', 'filezilla', 'fedora-workstation-repositories' ]
+        state: present
+
+    - name: Import Sublime HQ GPG key
+      rpm_key:
+        key: https://download.sublimetext.com/sublimehq-rpm-pub.gpg
+        state: present
+
+    - name: Add Google Chrome repository
+      command:
+        cmd: dnf config-manager --set-enabled google-chrome
+        warn: false
+        # creates: /etc/yum.repos.d/google-chrome.repo
+      # register: cr_repo_added
+      # failed_when: cr_repo_added.rc >= 1
+
+    - name: Add Sublime Text Stable repo
+      command:
+        cmd: dnf config-manager --add-repo https://download.sublimetext.com/rpm/stable/x86_64/sublime-text.repo
+        creates: /etc/yum.repos.d/sublime-text.repo
+      register: st_repo_added
+      failed_when: st_repo_added.rc >= 1
+
+    - name: Install Google Chrome
+      dnf:
+        name: google-chrome-stable
+        state: present
+        update_cache: yes
+      # when: cr_repo_added.rc == 0
+
+    - name: Install Sublime Text
+      dnf:
+        name: sublime-text
+        state: present
+      when: st_repo_added.rc == 0
+
+    - name: Install Sublime Merge
+      dnf:
+        name: sublime-merge
+        state: present
+      when: st_repo_added.rc == 0
+
+    - name: Install Synology Cloud Station Drive (EOL)
+      dnf:
+        name: 'https://global.download.synology.com/download/Tools/CloudStationDrive/4.2.8-4421/Fedora/Installer/x86_64/synology-cloud-station-drive-4.2.8-4421.x86_64.rpm'
+        state: present
